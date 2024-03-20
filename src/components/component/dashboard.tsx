@@ -7,69 +7,90 @@ import { useState, useEffect } from "react";
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { CardTitle, CardDescription, CardHeader, CardContent, Card } from "@/components/ui/card"
+import { CardTitle, CardDescription, CardHeader, CardContent, Card, } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 import { get, ref } from "firebase/database";
 import { database } from "../../app/firebaseConfig";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer"
 
 export function Dashboard() {
-  const [humidity, setHumidity] = useState(null);
-  const [logs, setLogs] = useState([]);
+  const [humidity, setHumidity] = useState<number>(0);
+  const [temperature, setTemperature] = useState<number>(0);
+  const [lastHours, setLastHours] = useState<number>(0);
+  const [lastMinutes, setLastMinutes] = useState<number>(0);
+  const [Presence, setPresence] = useState<boolean>(false);
   useEffect(() => {
-    const humidityRef = ref(database, 'humidity');
-    get(humidityRef).then((snapshot) => {
-      if (snapshot.exists()) {
-        setHumidity(snapshot.val());
-      }
-    })
-    const logsRef = ref(database, 'logs');
-    get(logsRef).then((snapshot) => {
-      if (snapshot.exists()) {
-        console.log('excelente');
-        // const logsArray = Object.entries(snapshot.val()).map(([id, data]) => ({
-        //   id,
-        //   // ...data,
-        // }));
-        // // setLogs(logsArray);
-        // console.log('logsArray:',logsArray);  
-      } else {
-        console.log('No data available');
-      }
-    }).catch((error) => {
-      console.error(error);
-    });
+    // Define a function to fetch data
+    const fetchData = () => {
+      const humidityRef = ref(database, 'humidity');
+      get(humidityRef).then((snapshot) => {
+        if (snapshot.exists()) {
+          setHumidity(snapshot.val());
+        }
+      }).catch((error) => {
+        console.error(error);
+      });
+      
+      const Presenceref = ref(database, 'presencia');
+      get(Presenceref).then((snapshot) => {
+        if (snapshot.exists()) {
+          setPresence(snapshot.val());
+          console.log('snapshotPresencia:',snapshot.val());
+        }
+      }).catch((error) => {
+        console.error(error);
+      });
+      
+      const temperatureRef = ref(database, 'temp');
+      get(temperatureRef).then((snapshot) => {
+        if (snapshot.exists()) {
+          setTemperature(snapshot.val());
+        }
+      }).catch((error) => {
+        console.error(error);
+      });
+      
+      const lastRef = ref(database, 'last');
+      get(lastRef).then((snapshot) => {
+        if (snapshot.exists()) {
+          const hours: number = Math.floor(snapshot.val() / 60);
+          const minutes: number = snapshot.val() % 60;
+          setLastHours(hours);
+          setLastMinutes(minutes);
+        }
+      }).catch((error) => {
+        console.error(error);
+      });
+    };
+  
+    // Call fetchData immediately
+    fetchData();
+  
+    // Set interval to call fetchData every 10 seconds
+    const interval = setInterval(fetchData, 10000);
+  
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
   }, []);
+  
   return (
     <div className="flex flex-col min-h-screen w-full items-center justify-center gap-2 p-4 md:gap-0 md:flex-row md:max-h-[calc(100vh_-_theme(spacing.16))] lg:gap-4 xl:max-h-[calc(100vh_-_theme(spacing.12))]">
-      <aside className="hidden md:flex flex-col w-[300px] max-h-[calc(100vh_-_theme(spacing.16))] border-r md:w-full md:max-h-full md:border-0 lg:max-w-[400px]">
-        <div className="flex items-center gap-4 p-4">
-          <Link className="flex items-center gap-2 text-lg font-semibold sm:text-base" href="#">
-            <FrameIcon className="w-6 h-6" />
-            <span className="sr-only">Acme Inc</span>
-          </Link>
-        </div>
-        <div className="flex-1 flex flex-col items-start gap-4 p-4">
-          <nav className="flex-1 flex flex-col items-start gap-4 text-sm">
-            <Link className="font-semibold peer-disabled:cursor-not-allowed peer-disabled:opacity-70" href="#">
-              Dashboard
-            </Link>
-            <Link className="rounded-lg" href="#">
-              <UploadCloudIcon className="w-4 h-4 peer-children:mr-2" />
-              Water Now
-            </Link>
-            <Link className="rounded-lg" href="#">
-              <SettingsIcon className="w-4 h-4 peer-children:mr-2" />
-              Settings
-            </Link>
-          </nav>
-        </div>
-      </aside>
       <main className="flex flex-col w-full gap-4 md:gap-2 lg:gap-4 xl:gap-8 md:grid-rows-1">
         <div className="flex items-center md:flex-col md:items-start md:gap-2 lg:gap-4 xl:gap-8">
           <h1 className="text-3xl font-bold tracking-tighter md:text-2xl xl:text-4xl">Smart Plant Regulator</h1>
-          <Button className="ml-auto md:ml-0" size="sm" variant="outline">
+          {/* <Button className="ml-auto md:ml-0" size="sm" variant="outline">
             Connect Device
-          </Button>
+          </Button> */}
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:gap-8">
           <Card className="p-0">
@@ -92,59 +113,98 @@ export function Dashboard() {
           <Card className="p-0">
             <CardHeader className="p-6 rounded-none">
               <div className="flex items-center gap-4">
-                <ClockIcon className="w-8 h-8" />
+                <TempIcon className="w-8 h-8" />
                 <div className="grid gap-1">
-                  <CardTitle>Next Watering</CardTitle>
-                  <CardDescription>Time until the next watering</CardDescription>
+                  <CardTitle>Temperature</CardTitle>
+                  <CardDescription>Current temperature at the location</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-6 flex items-center justify-center">
               <div className="text-5xl font-bold tracking-tighter peer-disabled:select-none">
-                2
-                <span className="text-2xl font-normal peer:translate-x-2">h</span>
-                30
-                <span className="text-2xl font-normal peer:translate-x-2">m</span>
+                {temperature}
+                <span className="text-2xl font-normal peer:translate-x-2">°</span>
               </div>
             </CardContent>
           </Card>
         </div>
-        <Card>
-          <CardHeader className="p-4">
-            <CardTitle>Watering Log</CardTitle>
-            <CardDescription>History of past waterings</CardDescription>
+        <div className="grid gap-4 md:grid-cols-2 xl:gap-8">
+          <Card>
+            <CardHeader className="p-4">
+              <CardTitle>Watering</CardTitle>
+              {/* <CardDescription>History of past waterings</CardDescription> */}
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-auto w-full">
+                <table className="w-full border-collapse text-sm peer-children:grid-rows-none">
+                  <thead className="peer-children:contents">
+                    <tr className="border-t">
+                      <th className="p-4 font-normal text-left peer:transition-colors peer:duration-150 peer:hover:bg-gray-100 dark:peer:hover:bg-gray-800">
+                        Last
+                      </th>
+                      <th className="p-4 font-normal text-left peer:transition-colors peer:duration-150 peer:hover:bg-gray-100 dark:peer:hover:bg-gray-800">
+                        {lastHours}:{lastMinutes} {lastHours < 12 ? 'AM' : 'PM'}
+                      </th>
+                    </tr>
+                    <tr className="border-t">
+                      <th className="p-4 font-normal text-left peer:transition-colors peer:duration-150 peer:hover:bg-gray-100 dark:peer:hover:bg-gray-800">
+                        Next
+                      </th>
+                      <th className="p-4 font-normal text-left peer:transition-colors peer:duration-150 peer:hover:bg-gray-100 dark:peer:hover:bg-gray-800">
+                        {lastHours}:{lastMinutes} {lastHours < 12 ? 'AM' : 'PM'}
+                      </th>
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+{/*           <Card>
+            <CardHeader className="p-4">
+              <CardTitle>Water config</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-auto w-full">
+                <table className="w-full border-collapse text-sm peer-children:grid-rows-none">
+                  <thead className="peer-children:contents">
+                    <tr className="border-t">
+                      <th className="p-4 font-normal text-left peer:transition-colors peer:duration-150 peer:hover:bg-gray-100 dark:peer:hover:bg-gray-800">
+                        Last
+                      </th>
+                      <th className="p-4 font-normal text-left peer:transition-colors peer:duration-150 peer:hover:bg-gray-100 dark:peer:hover:bg-gray-800">
+                        {lastHours}:{lastMinutes} {lastHours < 12 ? 'AM' : 'PM'}
+                      </th>
+                    </tr>
+                  </thead>
+                </table>
+              </div>
+            </CardContent>
+          </Card>*/}
+           <Card> 
+          <CardHeader className="p-4 justify-between flex-row">
+            <CardTitle>Presence</CardTitle>
+            <Badge className="badge-lg">{Presence ? 'True' : 'False'}</Badge>
+            {/* <CardDescription>History of past waterings</CardDescription> */}
           </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-auto w-full">
-              <table className="w-full border-collapse text-sm peer-children:grid-rows-none">
-                <thead className="peer-children:contents">
-                  <tr className="border-t">
-                    <th className="p-4 font-normal text-left peer:transition-colors peer:duration-150 peer:hover:bg-gray-100 dark:peer:hover:bg-gray-800">
-                      Time
-                    </th>
-                    <th className="p-4 font-normal text-left peer:transition-colors peer:duration-150 peer:hover:bg-gray-100 dark:peer:hover:bg-gray-800">
-                      Duration
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="peer-children:contents">
-                  <tr className="peer:transition-colors peer:duration-150 peer:hover:bg-gray-100 dark:peer:hover:bg-gray-800">
-                    <td className="p-4">10:00 AM</td>
-                    <td className="p-4">2 minutes</td>
-                  </tr>
-                  <tr className="peer:transition-colors peer:duration-150 peer:hover:bg-gray-100 dark:peer:hover:bg-gray-800">
-                    <td className="p-4">11:30 AM</td>
-                    <td className="p-4">3 minutes</td>
-                  </tr>
-                  <tr className="peer:transition-colors peer:duration-150 peer:hover:bg-gray-100 dark:peer:hover:bg-gray-800">
-                    <td className="p-4">2:45 PM</td>
-                    <td className="p-4">5 minutes</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
         </Card>
+        </div>
+       
+        <Drawer>
+  <DrawerTrigger>Nosotros</DrawerTrigger>
+  <DrawerContent>
+    <DrawerHeader>
+      <DrawerTitle>Plantita es un prototipo de sistema de riego automático</DrawerTitle>
+      <DrawerDescription>Conoce nuestro código.</DrawerDescription>
+    </DrawerHeader>
+    <DrawerFooter>
+      {/* <Button>Submit</Button> */}
+      <DrawerClose>
+        <Button variant="outline">Cerrar</Button>
+      </DrawerClose>
+    </DrawerFooter>
+  </DrawerContent>
+</Drawer>
+
       </main>
     </div>
   )
@@ -261,5 +321,11 @@ function ClockIcon({ className, ...rest }: IconProps) {
       <circle cx="12" cy="12" r="10" />
       <polyline points="12 6 12 12 16 14" />
     </svg>
+  )
+}
+
+function TempIcon({ className, ...rest }: IconProps) {
+  return (
+    <svg  {...rest}className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#ffffff"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M15 4H20M15 8H20M17 12H20M8 15.9998C7.44772 15.9998 7 16.4475 7 16.9998C7 17.5521 7.44772 17.9998 8 17.9998C8.55228 17.9998 9 17.5521 9 16.9998C9 16.4475 8.55228 15.9998 8 15.9998ZM8 15.9998V9M8 16.9998L8.00707 17.0069M12 16.9998C12 19.209 10.2091 20.9998 8 20.9998C5.79086 20.9998 4 19.209 4 16.9998C4 15.9854 4.37764 15.0591 5 14.354L5 6C5 4.34315 6.34315 3 8 3C9.65685 3 11 4.34315 11 6V14.354C11.6224 15.0591 12 15.9854 12 16.9998Z" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
   )
 }
